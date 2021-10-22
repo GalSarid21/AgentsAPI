@@ -124,12 +124,15 @@ namespace AgentsBL
 
                 foreach (var mission in allMissions)
                 {
-                    int tmpDistance = GetAdressesDistance(mission.Address, missionRequest.Address).Value;
+                    Distance tmpDistance = GetAdressesDistance(mission.Address, missionRequest.Address);
 
-                    if (tmpDistance < minDistance.Value)
+                    if (tmpDistance != null)
                     {
-                        minDistance.Value = tmpDistance;
-                        closestMission = mission;
+                        if (tmpDistance.Value < minDistance.Value)
+                        {
+                            minDistance.Value = tmpDistance.Value;
+                            closestMission = mission;
+                        } 
                     }
                 }
 
@@ -181,15 +184,25 @@ namespace AgentsBL
         }
         private Distance GetAdressesDistance(string missionAddress, string requestAddress)
         {
-            DirectionsRequest directionRequest = new DirectionsRequest();
+            Distance distance = null;
 
-            directionRequest.Key = googleApiKey;
-            directionRequest.Origin = new LocationEx(new Address(missionAddress));
-            directionRequest.Destination = new LocationEx(new Address(requestAddress));
+            try
+            {
+                DirectionsRequest directionRequest = new DirectionsRequest();
 
-            var response = GoogleMaps.Directions.Query(directionRequest);
+                directionRequest.Key = googleApiKey;
+                directionRequest.Origin = new LocationEx(new Address(missionAddress));
+                directionRequest.Destination = new LocationEx(new Address(requestAddress));
 
-            return response.Routes.First().Legs.First().Distance;
+                var response = GoogleMaps.Directions.Query(directionRequest);
+                distance = response.Routes.First().Legs.First().Distance;
+            }
+            catch (Exception ex)
+            {
+                // possible - write error to log
+            }
+
+            return distance;
         }
         #endregion
     }
