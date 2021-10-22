@@ -9,6 +9,7 @@ using GoogleApi.Entities.Maps.Common;
 using GoogleApi.Entities.Common;
 using GoogleApi;
 using Microsoft.Extensions.Configuration;
+using System.Text;
 
 namespace AgentsBL
 {
@@ -24,6 +25,7 @@ namespace AgentsBL
         const int INFINITY = 2147483647;
         const int ISOLATED_AGENT_MISSIONS_NUMBER = 1;
         const int ISOLATED_COUNTRY_INITIAL_DEGREE = 1;
+        const int EMPTY = 0;
         #endregion
 
         private readonly AppDataConnector appDataConnector;
@@ -41,6 +43,7 @@ namespace AgentsBL
         public AddMissionResponse AddMission(AddMissionRequest request)
         {
             AddMissionResponse response = new AddMissionResponse();
+            request.mission.Country = MakeMissionNameStartWithCapitalLetter(request.mission);
             Mission newMission = CreateNewMission(request);
 
             try
@@ -177,6 +180,24 @@ namespace AgentsBL
             }
 
             return distance;
+        }
+        private string MakeMissionNameStartWithCapitalLetter(Mission mission)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach (var letter in mission.Country)
+            {
+                if(sb.Length.Equals(EMPTY))
+                {
+                    sb.Append(char.ToUpper(letter));
+                }
+                else
+                {
+                    sb.Append(char.ToLower(letter));
+                }
+            }
+
+            return sb.ToString();
         }
         #endregion
     }
