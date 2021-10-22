@@ -17,9 +17,12 @@ namespace AgentsBL
         #region Consts
         const string SUCCESS_MSG = "SUCCEEDED";
         const string FAIL_MSG = "FAILED";
+        const string APP_SETTINGS = "appsettings.json";
+        const string GOOGLE_API_KEY = "GoogleAliKey";
 
         // set INFINITY to largest int possible
         const int INFINITY = 2147483647;
+        const int ISOLATED_AGENT_MISSIONS_NUMBER = 1;
         #endregion
 
         private readonly AppDataConnector appDataConnector;
@@ -29,9 +32,9 @@ namespace AgentsBL
             appDataConnector = new AppDataConnector();
 
             IConfiguration configuration = new ConfigurationBuilder().AddJsonFile(
-                "appsettings.json", false, true).Build();
+                APP_SETTINGS, false, true).Build();
 
-            googleApiKey = configuration.GetValue<string>("GoogleAliKey");
+            googleApiKey = configuration.GetValue<string>(GOOGLE_API_KEY);
         }
 
         public AddMissionResponse AddMission(AddMissionRequest request)
@@ -79,7 +82,7 @@ namespace AgentsBL
             {
                 ConcurrentBag<Mission> allMissions = appDataConnector.GetAllMissions();
                 var isolatedAgents = allMissions.GroupBy(m => m.Agent)
-                                                .Where(a => a.Count() == 1);
+                                                .Where(a => a.Count() == ISOLATED_AGENT_MISSIONS_NUMBER);
 
                 var missionsByCountries = allMissions.GroupBy(m => m.Country.ToLower());
 
