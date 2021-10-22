@@ -23,6 +23,7 @@ namespace AgentsBL
         // set INFINITY to largest int possible
         const int INFINITY = 2147483647;
         const int ISOLATED_AGENT_MISSIONS_NUMBER = 1;
+        const int ISOLATED_COUNTRY_INITIAL_DEGREE = 1;
         #endregion
 
         private readonly AppDataConnector appDataConnector;
@@ -72,39 +73,33 @@ namespace AgentsBL
 
             return allMissions;
         }
-        public IsolatedCounties GetCountriesByIsolation()
+        public IEnumerable<KeyValuePair<string,int>> GetCountriesByIsolation()
         {
-            IsolatedCounties mostIsolatedCountries = null;
-            List<string> mostIsolatedCountryNames = null;
-            int mostIsolatedAgentsSeen = 0;
+            IEnumerable <KeyValuePair<string, int>> mostIsolatedCountries  = null;
+            Dictionary<string, int> isolatedCountries = null;
 
             try
             {
                 ConcurrentBag<Mission> allMissions = appDataConnector.GetAllMissions();
-                var isolatedAgents = allMissions.GroupBy(m => m.Agent)
-                                                .Where(a => a.Count() == ISOLATED_AGENT_MISSIONS_NUMBER);
+                var isolatedAgentsMissions = allMissions.GroupBy(m => m.Agent)
+                                                        .Where(a => a.Count() == ISOLATED_AGENT_MISSIONS_NUMBER);
 
-                var missionsByCountries = allMissions.GroupBy(m => m.Country.ToLower());
+                isolatedCountries = new Dictionary<string, int>();
 
-                foreach (var country in missionsByCountries)
+                foreach (var mission in isolatedAgentsMissions)
                 {
-                    int numOfIsolatedAgents = CountIsolatedAgents(country, isolatedAgents);
-                    if (numOfIsolatedAgents > mostIsolatedAgentsSeen)
+                    if (isolatedCountries.Keys.Contains(mission.FirstOrDefault().Country))
                     {
-                        mostIsolatedAgentsSeen = numOfIsolatedAgents;
-                        mostIsolatedCountryNames = new List<string>()
-                        {
-                            country.FirstOrDefault().Country.ToUpper()
-                        };
+                        isolatedCountries[mission.FirstOrDefault().Country]++;
                     }
-
-                    else if(numOfIsolatedAgents == mostIsolatedAgentsSeen)
+                    else
                     {
-                        mostIsolatedCountryNames?.Add(country.FirstOrDefault().Country.ToUpper());
+                        isolatedCountries.Add(mission.FirstOrDefault().Country, ISOLATED_COUNTRY_INITIAL_DEGREE);
                     }
                 }
 
-                mostIsolatedCountries = CreateNewIsolatedCountries(mostIsolatedCountryNames, mostIsolatedAgentsSeen);
+                int maxIsolationDegree = isolatedCountries.Max(c => c.Value);
+                mostIsolatedCountries = isolatedCountries.Where(c => c.Value == maxIsolationDegree);
             }
             catch (Exception ex)
             {
@@ -160,30 +155,6 @@ namespace AgentsBL
             };
 
             return newMission;
-        }
-        private int CountIsolatedAgents(IGrouping<string,Mission> country, IEnumerable<IGrouping<string,Mission>> IsolatedAgents)
-        {
-            int numOfIsolatedAgent = 0;
-
-            foreach (var mission in country)
-            {
-                if(IsolatedAgents.Any(x => x.Any(y => y.Agent == mission.Agent)))
-                {
-                    numOfIsolatedAgent++;
-                }
-            }
-
-            return numOfIsolatedAgent;
-        }
-        private IsolatedCounties CreateNewIsolatedCountries(List<string> countries, int isolationDegree)
-        {
-            IsolatedCounties isolatedCountries = new IsolatedCounties()
-            {
-                Countries = countries,
-                IsolationDegree = isolationDegree
-            };
-
-            return isolatedCountries;
         }
         private Distance GetAdressesDistance(string missionAddress, string requestAddress)
         {

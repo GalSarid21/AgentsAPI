@@ -2,6 +2,7 @@
 using AgentsDM;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace AgentsAPI.Controllers
 {
@@ -32,7 +33,7 @@ namespace AgentsAPI.Controllers
 
         [HttpGet]
         [Route("countries-by-isolation")]
-        public IsolatedCounties CountriesByIsolation()
+        public IEnumerable<KeyValuePair<string, int>> CountriesByIsolation()
         {
             return missionsBL.GetCountriesByIsolation();
         }
