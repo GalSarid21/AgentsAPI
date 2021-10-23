@@ -7,9 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AgentsAPI", "AgentsAPI\Agen
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AgentsDAL", "AgentsDAL\AgentsDAL.csproj", "{89494BB2-E882-46A8-9296-3671C7FAF22B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgentsDM", "AgentsDM\AgentsDM.csproj", "{A0D01F22-1D3F-4F7E-B663-257B73393034}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AgentsDM", "AgentsDM\AgentsDM.csproj", "{A0D01F22-1D3F-4F7E-B663-257B73393034}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgentsBL", "AgentsBL\AgentsBL.csproj", "{05F7F031-1F8E-496D-BD29-05E23FED96FE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AgentsBL", "AgentsBL\AgentsBL.csproj", "{05F7F031-1F8E-496D-BD29-05E23FED96FE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AgentsUtils", "AgentsMathUtils\AgentsUtils.csproj", "{0888B555-D183-40A7-98D5-DB4FF9E820AD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{05F7F031-1F8E-496D-BD29-05E23FED96FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{05F7F031-1F8E-496D-BD29-05E23FED96FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{05F7F031-1F8E-496D-BD29-05E23FED96FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0888B555-D183-40A7-98D5-DB4FF9E820AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0888B555-D183-40A7-98D5-DB4FF9E820AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0888B555-D183-40A7-98D5-DB4FF9E820AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0888B555-D183-40A7-98D5-DB4FF9E820AD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
