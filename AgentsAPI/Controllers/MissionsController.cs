@@ -16,17 +16,14 @@ namespace AgentsAPI.Controllers
 
         [HttpPost]
         [Route("mission")]
-        public AddMissionResponse AddMission(AddMissionRequest request)
+        public BaseResponse AddMission(AddMissionRequest request)
         {
-            AddMissionResponse response = new AddMissionResponse();
-            response = missionsBL.AddMission(request);
-
-            return response;
+            return missionsBL.AddMission(request);
         }
 
         [HttpPost]
         [Route("find-closest")]
-        public Mission FindClosestMission(ClosestMissionRequest request)
+        public ClosestMissionResponse FindClosestMission(ClosestMissionRequest request)
         {
             return missionsBL.FindClosestMission(request);
         }
@@ -40,7 +37,7 @@ namespace AgentsAPI.Controllers
 
         [HttpGet]
         [Route("all-missions")]
-        public ConcurrentBag<Mission> AllMissions()
+        public List<Mission> AllMissions()
         {
             return missionsBL.GetAllMissions();
         }

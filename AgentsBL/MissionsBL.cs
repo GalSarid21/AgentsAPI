@@ -1,15 +1,14 @@
 ﻿using AgentsDAL;
 using AgentsDM;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using GoogleApi.Entities.Maps.Directions.Request;
-using GoogleApi.Entities.Maps.Common;
-using GoogleApi.Entities.Common;
-using GoogleApi;
 using Microsoft.Extensions.Configuration;
 using System.Text;
+using GoogleApi.Entities.Common;
+using GoogleApi;
+using GoogleApi.Entities.Maps.Geocoding.Address.Request;
+using GoogleApi.Entities.Maps.Geocoding;
 
 namespace AgentsBL
 {
@@ -19,17 +18,21 @@ namespace AgentsBL
         const string SUCCESS_MSG = "SUCCEEDED";
         const string FAIL_MSG = "FAILED";
         const string APP_SETTINGS = "appsettings.json";
-        const string GOOGLE_API_KEY = "GoogleAliKey";
+        const string GOOGLE_API_KEY = "GoogleApiKey";
+        const string GOOGLE_API_ERROR_MSG = "GoogleApiErrorMsg";
 
-        // set INFINITY to largest int possible
-        const int INFINITY = 2147483647;
+        // set INFINITY to largest long possible
         const int ISOLATED_AGENT_MISSIONS_NUMBER = 1;
         const int ISOLATED_COUNTRY_INITIAL_DEGREE = 1;
         const int EMPTY = 0;
+        const int EARTH_RADIUS_IN_KM = 6371;
+        const int LAT_INDX = 0;
+        const int LON_INDX = 1;
         #endregion
 
         private readonly AppDataConnector appDataConnector;
         private readonly string googleApiKey;
+        private readonly string googleApiDirectionWasntFoundMsg;
         public MissionsBL()
         {
             appDataConnector = new AppDataConnector();
@@ -38,32 +41,32 @@ namespace AgentsBL
                 APP_SETTINGS, false, true).Build();
 
             googleApiKey = configuration.GetValue<string>(GOOGLE_API_KEY);
+            googleApiDirectionWasntFoundMsg = configuration.GetValue<string>(GOOGLE_API_ERROR_MSG);
         }
 
-        public AddMissionResponse AddMission(AddMissionRequest request)
+        public BaseResponse AddMission(AddMissionRequest request)
         {
-            AddMissionResponse response = new AddMissionResponse();
+            BaseResponse response = new BaseResponse();
             request.mission.Country = MakeMissionNameStartWithCapitalLetter(request.mission);
             Mission newMission = CreateNewMission(request);
 
             try
             {
                 appDataConnector.AddNewMission(newMission);
-                response.Status = SUCCESS_MSG;
+                response.UpdateStatusAndError(SUCCESS_MSG);
             }
             catch(Exception ex)
             {
                 // possible - write error to log
 
-                response.Status = FAIL_MSG;
-                response.Error = ex.Message;
+                response.UpdateStatusAndError(FAIL_MSG, ex.Message);
             }
 
             return response;
         }
-        public ConcurrentBag<Mission> GetAllMissions()
+        public List<Mission> GetAllMissions()
         {
-            ConcurrentBag<Mission> allMissions = null;
+            List<Mission> allMissions = null;
 
             try
             {
@@ -83,10 +86,7 @@ namespace AgentsBL
 
             try
             {
-                ConcurrentBag<Mission> allMissions = appDataConnector.GetAllMissions();
-                var isolatedAgentsMissions = allMissions.GroupBy(m => m.Agent)
-                                                        .Where(a => a.Count() == ISOLATED_AGENT_MISSIONS_NUMBER);
-
+                var isolatedAgentsMissions = appDataConnector.GetAllMissionsWithIsolatedAgents(ISOLATED_AGENT_MISSIONS_NUMBER);
                 isolatedCountries = new Dictionary<string, int>();
 
                 foreach (var mission in isolatedAgentsMissions)
@@ -111,39 +111,55 @@ namespace AgentsBL
 
             return mostIsolatedCountries;
         }
-        public Mission FindClosestMission(ClosestMissionRequest missionRequest)
+        public ClosestMissionResponse FindClosestMission(ClosestMissionRequest missionRequest)
         {
-            Mission closestMission = null;
-            Distance minDistance = new Distance()
-            {
-                Value = INFINITY
-            };
+            ClosestMissionResponse response = new ClosestMissionResponse();
+            double minDistance = double.MaxValue;
 
             try
             {
-                ConcurrentBag<Mission> allMissions = appDataConnector.GetAllMissions();
+                List<Mission> allMissions = appDataConnector.GetAllMissions();
+                Coordinate missionRequestCoordinates = null;
+
+                if (missionRequest.AddressOrCoordinates.Any(c => char.IsLetter(c)))
+                {
+                    missionRequestCoordinates = GetCoordinateFromGeocodeAPI(missionRequest.AddressOrCoordinates); 
+                }
+                else
+                {
+                    string[] coordinates = missionRequest.AddressOrCoordinates.Split(',');
+
+                    missionRequestCoordinates = new Coordinate(Convert.ToDouble(coordinates[LAT_INDX]),
+                        Convert.ToDouble(coordinates[LON_INDX]));
+                }
 
                 foreach (var mission in allMissions)
                 {
-                    Distance tmpDistance = GetAdressesDistance(mission.Address, missionRequest.Address);
+                    double tmpDistance = GetAdressesDistanceInMeters(mission.Address, missionRequestCoordinates);
 
-                    if (tmpDistance != null)
+                    if (tmpDistance < minDistance)
                     {
-                        if (tmpDistance.Value < minDistance.Value)
-                        {
-                            minDistance.Value = tmpDistance.Value;
-                            closestMission = mission;
-                        } 
+                        minDistance = tmpDistance;
+                        response.Mission = mission;
                     }
                 }
 
+                if(response.Mission == null)
+                {
+                    throw new Exception(googleApiDirectionWasntFoundMsg);
+                }
+
+                response.UpdateStatusAndError(SUCCESS_MSG);
             }
             catch (Exception ex)
             {
                 // possible - write error to log
+
+                response.UpdateStatusAndError(FAIL_MSG, ex.Message);
+                response.Mission = null;
             }
 
-            return closestMission;
+            return response;
         }
 
         #region Private Methods
@@ -159,27 +175,50 @@ namespace AgentsBL
 
             return newMission;
         }
-        private Distance GetAdressesDistance(string missionAddress, string requestAddress)
+        private double GetAdressesDistanceInMeters(string missionAddress, Coordinate coordinate)
         {
-            Distance distance = null;
+            double distance = double.MaxValue;
+            Coordinate missionCoordinates = GetCoordinateFromGeocodeAPI(missionAddress);
+
+            if (missionCoordinates != null)
+            {
+                distance = GetDistanceFromLatLongInKM(missionCoordinates, coordinate); 
+            }
+
+            return distance;
+        }
+        private Coordinate GetCoordinateFromGeocodeAPI(string address)
+        {
+            Coordinate coordinate = null;
 
             try
             {
-                DirectionsRequest directionRequest = new DirectionsRequest();
+                AddressGeocodeRequest geocodeRequest = new AddressGeocodeRequest()
+                {
+                    Address = address,
+                    Key = googleApiKey
+                };
 
-                directionRequest.Key = googleApiKey;
-                directionRequest.Origin = new LocationEx(new Address(missionAddress));
-                directionRequest.Destination = new LocationEx(new Address(requestAddress));
-
-                var response = GoogleMaps.Directions.Query(directionRequest);
-                distance = response.Routes.First().Legs.First().Distance;
+                GeocodeResponse geocodeResponse = GoogleMaps.AddressGeocode.Query(geocodeRequest);
+                coordinate = geocodeResponse.Results.FirstOrDefault().Geometry.Location;
             }
             catch (Exception ex)
             {
                 // possible - write error to log
             }
 
-            return distance;
+            return coordinate;
+        }
+        private double GetDistanceFromLatLongInKM(Coordinate dstCoordination, Coordinate originCoordination)
+        {
+            double latDiffInRad = ConvertDegreesToRadians(dstCoordination.Latitude - originCoordination.Latitude);
+            double lonDiffInRad = ConvertDegreesToRadians(dstCoordination.Longitude - originCoordination.Longitude);
+            double haversine = Math.Sin(latDiffInRad / 2) * Math.Sin(latDiffInRad / 2) +
+                               Math.Cos(ConvertDegreesToRadians(originCoordination.Latitude)) * 
+                               Math.Cos(ConvertDegreesToRadians(dstCoordination.Latitude)) *
+                               Math.Sin(lonDiffInRad / 2) * Math.Sin(lonDiffInRad / 2);
+
+            return 2 *EARTH_RADIUS_IN_KM* Math.Atan2(Math.Sqrt(haversine), Math.Sqrt(1 - haversine));
         }
         private string MakeMissionNameStartWithCapitalLetter(Mission mission)
         {
@@ -198,6 +237,10 @@ namespace AgentsBL
             }
 
             return sb.ToString();
+        }
+        private double ConvertDegreesToRadians(double input)
+        {
+            return input * (Math.PI / 180);
         }
         #endregion
     }
