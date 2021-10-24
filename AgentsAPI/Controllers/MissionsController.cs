@@ -30,7 +30,7 @@ namespace AgentsAPI.Controllers
 
         [HttpGet]
         [Route("countries-by-isolation")]
-        public IEnumerable<KeyValuePair<string, int>> CountriesByIsolation()
+        public List<string> CountriesByIsolation()
         {
             return missionsBL.GetCountriesByIsolation();
         }

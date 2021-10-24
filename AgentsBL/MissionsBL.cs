@@ -65,37 +65,32 @@ namespace AgentsBL
 
             return allMissions;
         }
-        public IEnumerable<KeyValuePair<string,int>> GetCountriesByIsolation()
+        public List<string> GetCountriesByIsolation()
         {
-            IEnumerable <KeyValuePair<string, int>> mostIsolatedCountries  = null;
-            Dictionary<string, int> isolatedCountries = null;
+            List<string> isolatedCountries = null;
 
             try
             {
-                var isolatedAgentsMissions = appDataConnector.GetAllMissionsWithIsolatedAgents(MissionConsts.ISOLATED_AGENT_MISSIONS_NUMBER);
-                isolatedCountries = new Dictionary<string, int>();
+                List<Mission> isolatedAgentsMissions = appDataConnector
+                    .GetAllMissionsWithIsolatedAgents(MissionConsts.ISOLATED_AGENT_MISSIONS_NUMBER);
 
-                foreach (var mission in isolatedAgentsMissions)
+                var isolatedAgentsMissionsGroupByCountry = isolatedAgentsMissions.GroupBy(m => m.Country);
+                int maxIsolationDegree = isolatedAgentsMissionsGroupByCountry.Max(g => g.Count());
+                var mostIsolatedCountries = isolatedAgentsMissionsGroupByCountry.Where(g => g.Count() == maxIsolationDegree);
+
+                isolatedCountries = new List<string>();
+
+                foreach (var country in mostIsolatedCountries)
                 {
-                    if (isolatedCountries.Keys.Contains(mission.FirstOrDefault().Country))
-                    {
-                        isolatedCountries[mission.FirstOrDefault().Country]++;
-                    }
-                    else
-                    {
-                        isolatedCountries.Add(mission.FirstOrDefault().Country, MissionConsts.ISOLATED_COUNTRY_INITIAL_DEGREE);
-                    }
+                    isolatedCountries.Add(country.FirstOrDefault().Country);
                 }
-
-                int maxIsolationDegree = isolatedCountries.Max(c => c.Value);
-                mostIsolatedCountries = isolatedCountries.Where(c => c.Value == maxIsolationDegree);
             }
             catch (Exception ex)
             {
                 // possible - write error to log
             }
 
-            return mostIsolatedCountries;
+            return isolatedCountries;
         }
         public ClosestMissionResponse FindClosestMission(ClosestMissionRequest missionRequest)
         {

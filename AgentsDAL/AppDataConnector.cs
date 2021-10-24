@@ -15,11 +15,12 @@ namespace AgentsDAL
             // Use ConcurrencyBag for thread safe assurance
             return AppDataLoader.Missions.ToList();
         }
-        public IEnumerable<IGrouping<string,Mission>> GetAllMissionsWithIsolatedAgents(int isolatedAgentThreshold)
+        public List<Mission> GetAllMissionsWithIsolatedAgents(int isolatedAgentThreshold)
         {
             // The linq code simulate quering the DB
-            var missions = AppDataLoader.Missions.GroupBy(m => m.Agent)
-                                                 .Where(a => a.Count() == isolatedAgentThreshold);
+            List<Mission> missions = AppDataLoader.Missions.GroupBy(m => m.Agent)
+                                                            .Where(a => a.Count() == isolatedAgentThreshold)
+                                                            .SelectMany(g => g).ToList();
 
             return missions;
         }
