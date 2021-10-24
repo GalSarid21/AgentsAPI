@@ -15,14 +15,19 @@ namespace AgentsDAL
             // Use ConcurrencyBag for thread safe assurance
             return AppDataLoader.Missions.ToList();
         }
-        public List<Mission> GetAllMissionsWithIsolatedAgents(int isolatedAgentThreshold)
+        public IEnumerable<IGrouping<string,Mission>> GetMostIsolatedCountries(int isolatedAgentThreshold)
         {
             // The linq code simulate quering the DB
-            List<Mission> missions = AppDataLoader.Missions.GroupBy(m => m.Agent)
-                                                            .Where(a => a.Count() == isolatedAgentThreshold)
-                                                            .SelectMany(g => g).ToList();
+            var missions = AppDataLoader.Missions.GroupBy(m => m.Agent)
+                                                 .Where(a => a.Count() == isolatedAgentThreshold)
+                                                 .SelectMany(g => g)
+                                                 .ToList()
+                                                 .GroupBy(m => m.Country);
 
-            return missions;
+            int maxIsolationDegree = missions.Max(g => g.Count());
+            var mostIsolatedCountries = missions.Where(g => g.Count() == maxIsolationDegree);
+
+            return mostIsolatedCountries;
         }
         public void AddNewMission(Mission newMission)
         {

@@ -71,18 +71,14 @@ namespace AgentsBL
 
             try
             {
-                List<Mission> isolatedAgentsMissions = appDataConnector
-                    .GetAllMissionsWithIsolatedAgents(MissionConsts.ISOLATED_AGENT_MISSIONS_NUMBER);
-
-                var isolatedAgentsMissionsGroupByCountry = isolatedAgentsMissions.GroupBy(m => m.Country);
-                int maxIsolationDegree = isolatedAgentsMissionsGroupByCountry.Max(g => g.Count());
-                var mostIsolatedCountries = isolatedAgentsMissionsGroupByCountry.Where(g => g.Count() == maxIsolationDegree);
+                var mostIsolatedCountries = appDataConnector
+                    .GetMostIsolatedCountries(MissionConsts.ISOLATED_AGENT_MISSIONS_NUMBER);
 
                 isolatedCountries = new List<string>();
 
-                foreach (var country in mostIsolatedCountries)
+                foreach (var mission in mostIsolatedCountries)
                 {
-                    isolatedCountries.Add(country.FirstOrDefault().Country);
+                    isolatedCountries.Add(mission.FirstOrDefault().Country);
                 }
             }
             catch (Exception ex)
